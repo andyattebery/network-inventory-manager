@@ -1,0 +1,6 @@
+settings.yaml
+__pycache__/
+*.egg-info/
+dist/
+build/
+network_hosts_inventory.yaml.tpl
