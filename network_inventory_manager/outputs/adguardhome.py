@@ -91,7 +91,7 @@ class AdGuardHomeOutput:
     ) -> None:
         resp = self._session.get(f"{self._url}/control/clients")
         resp.raise_for_status()
-        current_by_name = {c["name"]: c for c in resp.json()["clients"]}
+        current_by_name = {c["name"]: c for c in (resp.json()["clients"] or [])}
         desired_by_name = {c.name: c for c in desired}
 
         to_add = set(desired_by_name) - set(current_by_name)

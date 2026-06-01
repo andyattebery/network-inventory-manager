@@ -33,7 +33,14 @@ pip install -e ".[test]"
 ## Running tests
 
 ```bash
-pytest tests/ -v
+docker build -t nim-test -f - . <<'DOCKERFILE'
+FROM python:3.12-slim
+COPY . /src
+WORKDIR /src
+RUN pip install --no-cache-dir -e ".[test]"
+CMD ["pytest", "tests/", "-v"]
+DOCKERFILE
+docker run --rm nim-test
 ```
 
 Tests use `unittest.mock` for the UniFi client and `responses` for AdGuardHome HTTP mocking. No external services needed.

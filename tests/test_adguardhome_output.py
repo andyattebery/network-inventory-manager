@@ -112,6 +112,20 @@ class TestSyncClients:
         assert any("update" in u for u in post_urls)
 
     @responses.activate
+    def test_null_clients_response(self):
+        """Fresh AGH instance returns null instead of empty list."""
+        responses.get(f"{URL}/control/rewrite/list", json=[])
+        responses.get(f"{URL}/control/clients", json={"clients": None, "auto_clients": []})
+        responses.post(f"{URL}/control/clients/add", json={})
+
+        desired = _desired(clients=[Client(name="new", ids=["10.0.0.1"])])
+        _output().sync(desired, dry_run=False, allow_removals=True)
+
+        posts = [c for c in responses.calls if c.request.method == "POST"]
+        assert len(posts) == 1
+        assert "/clients/add" in posts[0].request.url
+
+    @responses.activate
     def test_client_removals_blocked(self):
         responses.get(f"{URL}/control/rewrite/list", json=[])
         responses.get(f"{URL}/control/clients", json={
