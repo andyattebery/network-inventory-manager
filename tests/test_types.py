@@ -58,7 +58,6 @@ class TestSettingsLoad:
         settings = Settings.load(path)
         assert settings.dsm_url == "https://dsm.example.com"
         assert settings.unifi_site == "default"
-        assert settings.dry_run is False
 
     def test_env_overrides_yaml(self, tmp_path, monkeypatch):
         path = self._write_yaml(tmp_path, self._base_settings())
@@ -77,12 +76,6 @@ class TestSettingsLoad:
         path = self._write_yaml(tmp_path, data)
         with pytest.raises(ValueError, match="local_config_path"):
             Settings.load(path)
-
-    def test_dry_run_parsing(self, tmp_path):
-        data = self._base_settings()
-        data["dry_run"] = "true"
-        path = self._write_yaml(tmp_path, data)
-        assert Settings.load(path).dry_run is True
 
     def test_outputs_parsing(self, tmp_path):
         data = self._base_settings()

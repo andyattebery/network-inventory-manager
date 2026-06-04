@@ -1,4 +1,5 @@
 settings.yaml
+config.yaml
 __pycache__/
 *.egg-info/
 dist/

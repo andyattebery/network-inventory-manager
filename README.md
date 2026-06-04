@@ -6,7 +6,7 @@ Runs as a Docker container on a configurable interval, with an HTTP endpoint to 
 
 ## Quick start
 
-1. Create a `settings.yaml`:
+1. Create a `config.yaml`:
 
 ```yaml
 local_config_path: /config/network_hosts_inventory.yaml.tpl
@@ -18,14 +18,13 @@ unifi_url: https://192.168.1.1
 unifi_username: admin
 unifi_password: your-password
 op_service_account_token: ops_...
-dry_run: true
 ```
 
 2. Run:
 
 ```bash
 docker run -d \
-  -v ./settings.yaml:/config/settings.yaml:ro \
+  -v ./config.yaml:/config/config.yaml:ro \
   -v ./network_hosts_inventory.yaml.tpl:/config/network_hosts_inventory.yaml.tpl:ro \
   -p 8080:8080 \
   ghcr.io/andyattebery/network-inventory-manager

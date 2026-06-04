@@ -87,7 +87,7 @@ def build_desired_state(
     )
 
 
-def run_sync(settings: Settings) -> None:
+def run_sync(settings: Settings, *, dry_run: bool = False) -> None:
     inventory = network_hosts_inventory.load(
         local_config_path=settings.local_config_path,
         config_repo=settings.config_repo,
@@ -128,12 +128,12 @@ def run_sync(settings: Settings) -> None:
                     settings.adguardhome_url,
                     settings.adguardhome_username,
                     settings.adguardhome_password,
-                ).sync(desired, settings.dry_run, allow_removals)
+                ).sync(desired, dry_run, allow_removals)
             except requests.RequestException:
                 logger.error("AdGuardHome sync failed", exc_info=True)
 
         if "unifi" in settings.outputs and unifi is not None:
             try:
-                UnifiOutput(unifi).sync(desired, settings.unifi_site, settings.dry_run)
+                UnifiOutput(unifi).sync(desired, settings.unifi_site, dry_run)
             except requests.RequestException:
                 logger.error("UniFi DHCP sync failed", exc_info=True)

@@ -66,7 +66,7 @@ Inventory services take priority over DSM services on conflict.
 
 Settings can come from a YAML file, environment variables, or both. Environment variables override YAML values.
 
-The YAML file defaults to `/config/settings.yaml` and can be changed with `--config`.
+The YAML file defaults to `/config/config.yaml` and can be changed with `--config`.
 
 | YAML key | Env var | Required | Default | Description |
 |----------|---------|----------|---------|-------------|
@@ -84,7 +84,6 @@ The YAML file defaults to `/config/settings.yaml` and can be changed with `--con
 | `unifi_username` | `UNIFI_USERNAME` | yes | | UniFi admin username |
 | `unifi_password` | `UNIFI_PASSWORD` | yes | | UniFi admin password |
 | `unifi_site` | `UNIFI_SITE` | | `default` | UniFi site name |
-| `dry_run` | `DRY_RUN` | | `false` | Log changes without applying |
 | `outputs` | `OUTPUTS` | | `adguardhome,unifi` | Comma-separated list of enabled outputs |
 
 *Either `local_config_path` or both `config_repo` + `repo_config_path` must be set.
@@ -110,7 +109,7 @@ If `op inject` fails (token invalid, item missing, 1Password unreachable):
 ```bash
 docker run -d \
   --name network-inventory-manager \
-  -v ./settings.yaml:/config/settings.yaml:ro \
+  -v ./config.yaml:/config/config.yaml:ro \
   -v ./network_hosts_inventory.yaml.tpl:/config/network_hosts_inventory.yaml.tpl:ro \
   -p 8080:8080 \
   ghcr.io/andyattebery/network-inventory-manager
@@ -122,15 +121,16 @@ The container syncs every 30 minutes by default (`--interval 1800`).
 
 | Flag | Default | Description |
 |------|---------|-------------|
-| `--config PATH` | `/config/settings.yaml` | Path to settings YAML |
+| `--config PATH` | `/config/config.yaml` | Path to config YAML |
 | `--interval SECONDS` | `0` | Seconds between syncs. `0` = run once and exit |
 | `--verbose` / `-v` | off | Show unchanged entries in addition to changes |
+| `--dry-run` | off | Log changes without applying them |
 
 ### One-shot mode
 
 ```bash
 docker run --rm \
-  -v ./settings.yaml:/config/settings.yaml:ro \
+  -v ./config.yaml:/config/config.yaml:ro \
   -v ./inventory.yaml.tpl:/config/network_hosts_inventory.yaml.tpl:ro \
   ghcr.io/andyattebery/network-inventory-manager --interval 0
 ```
@@ -148,29 +148,7 @@ Triggering a sync during an active cycle queues it — the next cycle starts imm
 
 ## Dry run
 
-Set `dry_run: true` in settings (or `DRY_RUN=true` env var). All reads proceed normally, but writes are logged with `[DRY RUN]` prefix instead of executed.
-
-## Adding a new host
-
-Use `add_host.sh` to add a host to both 1Password and the inventory file:
-
-```bash
-./add_host.sh <hostname> <ip> <mac> [--dry-run]
-```
-
-This:
-1. Creates or updates a 1Password item in the "Home Lab" vault with `hardware/mac address`
-2. Adds or updates the host in `network_hosts_inventory.yaml.tpl` with the `op://` reference
-
-## Importing hosts from CSV
-
-To bulk-import from a CSV with columns `Host,IP,MAC`:
-
-```bash
-./import_missing_macs.sh hosts.csv [--dry-run]
-```
-
-This calls `add_host.sh` for each row.
+Pass `--dry-run` on the command line. All reads proceed normally, but writes are logged with `[DRY RUN]` prefix instead of executed.
 
 ## Error handling
 

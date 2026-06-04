@@ -104,10 +104,10 @@ _SETTINGS_ENV_MAP = {
     "unifi_username": "UNIFI_USERNAME",
     "unifi_password": "UNIFI_PASSWORD",
     "unifi_site": "UNIFI_SITE",
-    "dry_run": "DRY_RUN",
     "outputs": "OUTPUTS",
     "sync_interval": "SYNC_INTERVAL",
     "verbose": "VERBOSE",
+    "port": "PORT",
 }
 
 _SETTINGS_REQUIRED = {
@@ -133,10 +133,10 @@ class Settings:
     github_token: str = ""
     config_branch: str = "main"
     unifi_site: str = "default"
-    dry_run: bool = False
     outputs: tuple[str, ...] = ("adguardhome", "unifi")
     sync_interval: int = 0
     verbose: bool = False
+    port: int = 8080
 
     @classmethod
     def load(cls, settings_path: Path | None = None) -> Settings:
@@ -181,8 +181,8 @@ class Settings:
             github_token=merged.get("github_token", ""),
             config_branch=merged.get("config_branch", "main"),
             unifi_site=merged.get("unifi_site", "default"),
-            dry_run=merged.get("dry_run", "false").lower() == "true",
             outputs=tuple(s.strip() for s in outputs_raw.split(",")),
             sync_interval=int(merged.get("sync_interval", "0")),
             verbose=merged.get("verbose", "false").lower() == "true",
+            port=int(merged.get("port", "8080")),
         )

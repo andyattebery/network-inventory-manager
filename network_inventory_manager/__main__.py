@@ -7,7 +7,7 @@ from pathlib import Path
 from network_inventory_manager._types import Settings
 from network_inventory_manager.sync import run_sync
 
-_DEFAULT_CONFIG_PATH = Path("/config/settings.yaml")
+_DEFAULT_CONFIG_PATH = Path("/config/config.yaml")
 
 
 class SyncHandler(BaseHTTPRequestHandler):
@@ -42,7 +42,7 @@ def main() -> None:
         "--config",
         type=Path,
         default=_DEFAULT_CONFIG_PATH,
-        help="Path to settings YAML file (default: %(default)s). Env vars override file values.",
+        help="Path to config YAML file (default: %(default)s). Env vars override file values.",
     )
     parser.add_argument(
         "--interval",
@@ -54,6 +54,17 @@ def main() -> None:
         "--verbose", "-v",
         action="store_true",
         help="Show unchanged/existing entries in addition to changes.",
+    )
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=0,
+        help="HTTP server port (default: 8080).",
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Log changes without applying them.",
     )
     args = parser.parse_args()
 
@@ -71,16 +82,18 @@ def main() -> None:
     if verbose:
         logging.getLogger().setLevel(logging.DEBUG)
 
+    port = args.port if args.port != 0 else settings.port
+
     sync_event = threading.Event()
     SyncHandler.sync_event = sync_event
-    server = HTTPServer(("0.0.0.0", 8080), SyncHandler)
+    server = HTTPServer(("0.0.0.0", port), SyncHandler)
     threading.Thread(target=server.serve_forever, daemon=True).start()
-    logger.info("HTTP server listening on port 8080")
+    logger.info("HTTP server listening on port %d", port)
 
     while True:
         logger.info("Starting sync cycle")
         try:
-            run_sync(settings)
+            run_sync(settings, dry_run=args.dry_run)
         except Exception:
             logger.error("Sync cycle failed", exc_info=True)
         logger.info("Sync cycle complete")
@@ -92,4 +105,5 @@ def main() -> None:
         sync_event.clear()
 
 
-main()
+if __name__ == "__main__":
+    main()
