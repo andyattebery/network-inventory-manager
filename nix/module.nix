@@ -193,6 +193,9 @@ in
       after = [ "network-online.target" ];
       wants = [ "network-online.target" ];
 
+      # op CLI needs a writable HOME for its daemon socket
+      environment.HOME = "/var/lib/network-inventory-manager";
+
       serviceConfig = {
         Type = "simple";
         DynamicUser = true;
