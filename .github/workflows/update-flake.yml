@@ -1,0 +1,40 @@
+---
+name: update-flake
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag (e.g. 1.1.0 or v1.1.0)'
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  update-flake:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: main
+      - name: Compute version
+        id: version
+        run: |
+          TAG="${{ inputs.tag }}"
+          VERSION="${TAG#v}"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+      - name: Update nix/package.nix
+        run: |
+          sed -i 's/version = ".*";/version = "${{ steps.version.outputs.version }}";/' nix/package.nix
+      - name: Update pyproject.toml
+        run: |
+          sed -i 's/^version = ".*"/version = "${{ steps.version.outputs.version }}"/' pyproject.toml
+      - name: Commit and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git diff --quiet nix/package.nix pyproject.toml && exit 0
+          git add nix/package.nix pyproject.toml
+          git commit -m "update flake to ${{ steps.version.outputs.version }}" -m "[skip ci]"
+          git push
