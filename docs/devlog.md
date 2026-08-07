@@ -6,7 +6,7 @@ an entry here.
 
 ---
 
-## 2026-08-07 — fail closed on inventory errors, and gate removals (`ab3777a`, 0.2.0)
+## 2026-08-07 — fail closed on inventory errors, and gate removals (0.2.0)
 
 ### What happened
 
