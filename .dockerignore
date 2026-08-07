@@ -1,0 +1,27 @@
+# Dockerfile does `COPY . /src`, and config.yaml holds a live 1Password service
+# account token plus AdGuardHome and UniFi passwords. Without this file a local
+# `docker build` bakes them into an image layer.
+# The build needs only pyproject.toml and network_inventory_manager/.
+
+.git
+.github
+.claude
+.gitignore
+.dockerignore
+.venv
+
+config.yaml
+settings.yaml
+network_hosts_inventory.yaml.tpl
+
+docs
+nix
+tests
+flake.nix
+Dockerfile
+README.md
+
+__pycache__/
+*.egg-info/
+dist/
+build/

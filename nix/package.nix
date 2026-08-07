@@ -44,7 +44,15 @@ python312Packages.buildPythonApplication {
       --prefix PATH : ${lib.makeBinPath [ _1password-cli ]}
   '';
 
-  doCheck = false;
+  # Tests run as part of the build, so a deploy of this package cannot activate
+  # a tree that fails them. Consumers pin this flake to a branch, not a tag, so
+  # the commit that ships is not necessarily one GitHub CI ran pytest against —
+  # this is the only check that always sees the deployed source.
+  # Every test must therefore stay hermetic: no real `op`, no network.
+  nativeCheckInputs = [
+    python312Packages.pytestCheckHook
+    python312Packages.responses
+  ];
 
   meta = {
     description = "Syncs network host configuration to AdGuardHome and UniFi controllers";

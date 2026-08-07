@@ -6,6 +6,8 @@ from types import TracebackType
 import requests
 import urllib3
 
+from network_inventory_manager._types import TimeoutSession
+
 logger = logging.getLogger(__name__)
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
@@ -13,7 +15,7 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 class UnifiAPIClient:
     def __init__(self, url: str, username: str, password: str) -> None:
-        self._session = requests.Session()
+        self._session = TimeoutSession()
         self._session.verify = False
         try:
             resp = self._session.post(

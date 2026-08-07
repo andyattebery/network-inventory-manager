@@ -4,8 +4,8 @@
 
 ```
 network_inventory_manager/
-  __main__.py              # entry point, CLI args, HTTP server, sync loop
-  _types.py                # dataclasses, Settings, utility functions
+  __main__.py              # entry point, CLI args, HTTP server (/sync /health /metrics), sync loop
+  _types.py                # dataclasses, Settings, SyncStatus, TimeoutSession, validators
   sync.py                  # orchestration (run_sync) + desired state builder
   api/
     unifi.py               # UniFi API client (auth, CSRF, session management)
@@ -75,4 +75,15 @@ Tag format: `v1.0.0` for releases, `v1.0.0-rc1` for pre-releases. Pre-release ta
 1. Create `network_inventory_manager/inputs/myinput.py` with a function that returns data
 2. Call it from `run_sync()` in `sync.py`
 3. If it feeds into `build_desired_state`, add a parameter and incorporate the data
-4. Wrap the call in try/except and track success for `allow_removals` if the input affects what gets removed
+4. Wrap the call in try/except and cache its last known-good contribution if the input *contributes to* what gets removed, so an outage protects those entries instead of freezing every source's removals. If the input *is* the desired state — as the host inventory is — a failure must abort the whole cycle instead: degrading to an empty desired state makes every existing entry look stale.
+5. Set a timeout. Use `TimeoutSession` from `_types.py` for anything session-based, or pass `HTTP_TIMEOUT_SECONDS` explicitly. `requests` waits forever by default and there is one sync thread, so a single untimed call wedges every later cycle while `/health` keeps reporting the last good result.
+
+## Removals
+
+Three gates sit between "absent from the desired state" and "deleted", and a new output should honour all of them — `RemovalPolicy` in `_types.py` carries them together:
+
+- **protected** — a currently-unreachable input's last known-good entries
+- **ownership** — only entries NIM recorded creating, kept as a `! nim-owned` comment line in AdGuardHome's `user_rules` so NIM itself stays stateless
+- **grace window** — `removal_grace_cycles` consecutive absences, counted in `SourceCache` in memory so a restart delays removals rather than performing them
+
+Nothing refuses a sync outright. An earlier version bounded removal *volume* and refused the whole resource when exceeded, which meant a legitimately large cleanup wedged the service with no way for the running unit to clear it. Log loudly and proceed instead.

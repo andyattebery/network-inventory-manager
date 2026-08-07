@@ -5,6 +5,9 @@ from pathlib import Path
 
 from network_inventory_manager._types import (
     Settings,
+    has_unresolved_op_ref,
+    is_valid_dns_name,
+    is_valid_ip,
     is_valid_mac,
     normalize_mac,
 )
@@ -24,15 +27,111 @@ class TestNormalizeMac:
         assert normalize_mac("AA-BB-CC:DD:EE:FF") == "aa:bb:cc:dd:ee:ff"
 
 
+class TestHasUnresolvedOpRef:
+    def test_resolved_value(self):
+        assert has_unresolved_op_ref("aa:bb:cc:dd:ee:ff") is False
+
+    def test_unresolved_op_ref(self):
+        assert has_unresolved_op_ref("{{ op://vault/item/field }}") is True
+
+    def test_unresolved_op_ref_no_spaces(self):
+        assert has_unresolved_op_ref("{{op://vault/item/field}}") is True
+
+    def test_embedded_in_larger_text(self):
+        assert has_unresolved_op_ref("domain: {{ op://v/i/f }}\nhosts: {}") is True
+
+    def test_non_string(self):
+        assert has_unresolved_op_ref(None) is False
+
+
 class TestIsValidMac:
-    def test_valid(self):
+    def test_colon_separated(self):
         assert is_valid_mac("aa:bb:cc:dd:ee:ff") is True
+
+    def test_dash_separated_uppercase(self):
+        assert is_valid_mac("AA-BB-CC-DD-EE-FF") is True
+
+    def test_bare_hex(self):
+        assert is_valid_mac("aabbccddeeff") is True
+
+    def test_dot_separated(self):
+        assert is_valid_mac("aa.bb.cc.dd.ee.ff") is True
+
+    def test_non_hex_digit(self):
+        assert is_valid_mac("zz:bb:cc:dd:ee:ff") is False
+
+    def test_too_short(self):
+        assert is_valid_mac("aa:bb:cc") is False
 
     def test_unresolved_op_ref(self):
         assert is_valid_mac("{{ op://vault/item/field }}") is False
 
-    def test_unresolved_op_ref_no_spaces(self):
-        assert is_valid_mac("{{op://vault/item/field}}") is False
+    def test_mangled_op_ref(self):
+        assert is_valid_mac("op://vault/item/field") is False
+
+    def test_non_string(self):
+        assert is_valid_mac(None) is False
+
+
+class TestIsValidDnsName:
+    def test_domain(self):
+        assert is_valid_dns_name("example.com") is True
+
+    def test_bare_label(self):
+        # A homelab may use `lan` or `home` as its TLD.
+        assert is_valid_dns_name("lan") is True
+
+    def test_dotted_host_key(self):
+        assert is_valid_dns_name("bmc.nas-host-01") is True
+
+    def test_hyphenated_service_key(self):
+        assert is_valid_dns_name("llama-swap.htpc-01") is True
+
+    def test_unresolved_op_ref(self):
+        assert is_valid_dns_name("{{ op://Personal/Home Lab/domains/internal }}") is False
+
+    def test_lowercased_unresolved_op_ref(self):
+        # The shape AdGuardHome stored during the incident.
+        assert is_valid_dns_name("{{ op://personal/home lab/domains/internal }}") is False
+
+    def test_mangled_op_ref(self):
+        assert is_valid_dns_name("op://Personal/Home Lab/domains/internal") is False
+
+    def test_empty(self):
+        assert is_valid_dns_name("") is False
+
+    def test_leading_hyphen(self):
+        assert is_valid_dns_name("-bad.com") is False
+
+    def test_leading_dot(self):
+        assert is_valid_dns_name(".com") is False
+
+    def test_embedded_space(self):
+        assert is_valid_dns_name("a b.com") is False
+
+    def test_non_string(self):
+        assert is_valid_dns_name(None) is False
+
+
+class TestIsValidIp:
+    def test_ipv4(self):
+        assert is_valid_ip("192.168.1.1") is True
+
+    def test_ipv6(self):
+        assert is_valid_ip("::1") is True
+
+    def test_not_an_ip(self):
+        assert is_valid_ip("not-an-ip") is False
+
+    def test_empty(self):
+        assert is_valid_ip("") is False
+
+    def test_non_string(self):
+        assert is_valid_ip(None) is False
+
+    def test_yaml_float(self):
+        # `ip: 10.0` parses as a float, not a string.
+        assert is_valid_ip(10.0) is False
 
 
 class TestSettingsLoad:
@@ -82,3 +181,18 @@ class TestSettingsLoad:
         data["outputs"] = "adguardhome"
         path = self._write_yaml(tmp_path, data)
         assert Settings.load(path).outputs == ("adguardhome",)
+
+    def test_removal_grace_cycles_default(self, tmp_path):
+        path = self._write_yaml(tmp_path, self._base_settings())
+        assert Settings.load(path).removal_grace_cycles == 8
+
+    def test_removal_grace_cycles_from_yaml(self, tmp_path):
+        data = self._base_settings()
+        data["removal_grace_cycles"] = 3
+        path = self._write_yaml(tmp_path, data)
+        assert Settings.load(path).removal_grace_cycles == 3
+
+    def test_removal_grace_cycles_from_env(self, tmp_path, monkeypatch):
+        path = self._write_yaml(tmp_path, self._base_settings())
+        monkeypatch.setenv("REMOVAL_GRACE_CYCLES", "0")
+        assert Settings.load(path).removal_grace_cycles == 0

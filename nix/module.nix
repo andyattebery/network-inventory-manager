@@ -20,6 +20,7 @@ let
     config_branch = cfg.settings.configBranch;
     outputs = lib.concatStringsSep "," cfg.settings.outputs;
     port = cfg.settings.port;
+    removal_grace_cycles = cfg.settings.removalGraceCycles;
   };
 
   generatedConfig = settingsFormat.generate "network-inventory-manager-config.yaml" settingsAttrs;
@@ -132,6 +133,17 @@ in
         type = lib.types.port;
         default = 8080;
         description = "HTTP server port for /sync and /health endpoints.";
+      };
+
+      removalGraceCycles = lib.mkOption {
+        type = lib.types.int;
+        default = 8;
+        description = ''
+          Consecutive sync cycles an entry must be absent from the desired state
+          before it is deleted from AdGuardHome. At the default syncInterval this
+          is four hours, so a service stopped for debugging keeps its DNS rewrite.
+          Set to 0 to delete as soon as an entry stops being desired.
+        '';
       };
     };
 

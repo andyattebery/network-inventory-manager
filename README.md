@@ -40,3 +40,5 @@ curl -X POST http://localhost:8080/sync
 
 - [User guide](docs/user-guide.md) — inventory format, settings, running, error handling
 - [Development](docs/development.md) — project structure, tests, CI
+- [Devlog](docs/devlog.md) — why past changes were made
+- [Roadmap](docs/roadmap.md) — known gaps and deferred work
