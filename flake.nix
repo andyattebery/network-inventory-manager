@@ -9,7 +9,17 @@
     let
       supportedSystems = [ "x86_64-linux" "aarch64-linux" "x86_64-darwin" "aarch64-darwin" ];
       forAllSystems = nixpkgs.lib.genAttrs supportedSystems;
-      pkgsFor = system: nixpkgs.legacyPackages.${system};
+      # Not legacyPackages: nix/package.nix wraps the 1Password CLI onto the program's PATH,
+      # and that package is unfree, so nixpkgs refuses to evaluate it under the default
+      # config. Without this the flake's own packages.default cannot be built at all -- which
+      # went unnoticed because the only consumer builds it through an overlay, inside a NixOS
+      # config that declares its own allowUnfreePredicate. A narrow predicate rather than
+      # allowUnfree, so nothing else slips through.
+      pkgsFor = system: import nixpkgs {
+        inherit system;
+        config.allowUnfreePredicate = pkg:
+          builtins.elem (nixpkgs.lib.getName pkg) [ "1password-cli" ];
+      };
     in
     {
       packages = forAllSystems (system: let
