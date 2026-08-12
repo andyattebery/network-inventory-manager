@@ -7,7 +7,7 @@
 
 python312Packages.buildPythonApplication {
   pname = "network-inventory-manager";
-  version = "2.0.1";
+  version = "0.2.1";
   pyproject = true;
 
   src = lib.cleanSourceWith {
