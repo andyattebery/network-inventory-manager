@@ -1,10 +1,13 @@
 {
   lib,
+  callPackage,
   python312Packages,
   makeWrapper,
-  _1password-cli,
 }:
 
+let
+  op = callPackage ./op-cli.nix { };
+in
 python312Packages.buildPythonApplication {
   pname = "network-inventory-manager";
   version = "0.2.1";
@@ -25,6 +28,7 @@ python312Packages.buildPythonApplication {
         "config.yaml"
         "network_hosts_inventory.yaml.tpl"
         "Dockerfile"
+        "op-cli.toml"
       ]);
   };
 
@@ -41,7 +45,7 @@ python312Packages.buildPythonApplication {
 
   postFixup = ''
     wrapProgram $out/bin/network-inventory-manager \
-      --prefix PATH : ${lib.makeBinPath [ _1password-cli ]}
+      --prefix PATH : ${lib.makeBinPath [ op ]}
   '';
 
   # Tests run as part of the build, so a deploy of this package cannot activate

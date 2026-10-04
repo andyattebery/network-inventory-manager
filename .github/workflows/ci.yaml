@@ -42,7 +42,8 @@ jobs:
         with:
           extra_nix_config: |
             extra-experimental-features = nix-command flakes
-      # This builds checks.<system>.*, which is where the module regression test lives.
+      # This builds checks.<system>.*, which is where the module regression test and the
+      # op-cli.toml hash check live.
       # `nix flake check` on its own does NOT evaluate nixosModules -- it only forces the
       # attribute, which for a lambda yields the lambda unapplied -- so without a `checks`
       # entry this step would pass on a module that cannot be imported at all.

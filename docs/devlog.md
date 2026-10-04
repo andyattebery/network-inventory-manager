@@ -6,6 +6,37 @@ an entry here.
 
 ---
 
+## 2026-10-04 — one 1Password CLI pin for the image and the nix package
+
+The image and the nix package had drifted onto three different `op` releases:
+2.40.0 pinned in the Dockerfile, 2.34.1 in the flake's own packages (from its
+locked nixpkgs), and 2.34.0 on network-01. The last is why the pin cannot come from
+nixpkgs. The overlay calls `final.callPackage`, so a consumer builds this package
+against *its own* nixpkgs — homelab-infrastructure follows nixos-26.05 — and
+bumping this flake's lock changes nothing there.
+
+`op-cli.toml` now holds the version and the sha256 of each release download, and
+both builds read it. `nix/op-cli.nix` overrides nixpkgs' `_1password-cli` with
+that release, so the pin travels inside the package into whichever nixpkgs builds
+it. The Dockerfile downloads the same files and checks the same hashes.
+
+This reverses part of the 0.2.0 entry below: the image no longer installs from
+1Password's apt repo, and a new upstream release no longer breaks the build. That
+repo carries only the current release, so pinning against it meant an old tag
+stopped building as soon as 1Password moved on, and the nix side could not have
+followed it — when the Dockerfile moved to 2.40.0, no nixpkgs branch had it
+(unstable was on 2.39.0). 1Password's release archive keeps old releases, so the
+pin holds without the breakage. The cost is that nothing forces an upgrade any
+more.
+
+The hashes are of the downloaded files, not of the unpacked tree that nixpkgs'
+`fetchzip` hashes, so one value per platform serves both builds; nix unzips the
+file itself as a result. They replace apt's signature check only in part: a build
+proves its download matches the pin, not that the pin is 1Password's. That is
+checked once, by hand, when bumping — `op-cli.toml` says how.
+
+---
+
 ## 2026-08-07 — fail closed on inventory errors, and gate removals (0.2.0)
 
 ### What happened
@@ -103,7 +134,9 @@ at its cause instead of at its volume.
 - The 1Password CLI is pinned in the `Dockerfile`. Their apt repo carries only
   the current release, so a new upstream version breaks the build until the ARG
   is bumped. That is the intended behaviour, not an oversight — an unpinned CLI
-  is what makes an image unreproducible in the first place.
+  is what makes an image unreproducible in the first place. *Superseded
+  2026-10-04: the pin moved to `op-cli.toml` and no longer comes from apt — see
+  that entry.*
 - `nix/package.nix` sets `nativeCheckInputs` and runs pytest during the build.
   Consumers pin this flake to a branch rather than a tag, so the commit that
   ships is not necessarily one GitHub CI tested; the build-time check is the only

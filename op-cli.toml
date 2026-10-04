@@ -1,0 +1,26 @@
+# The 1Password CLI this project ships. The Dockerfile and nix/op-cli.nix both
+# read this file, so the image, the nix package (flake output or overlay) and the
+# devshell all install the same `op`. Bump the version here and nowhere else.
+#
+# Each hash is the sha256 of a file in 1Password's release archive:
+#   https://cache.agilebits.com/dist/1P/op2/pkg/v<version>/op_<platform>_v<version>.<ext>
+# with <ext> "pkg" for apple_universal and "zip" for the rest. The archive keeps
+# old releases, unlike 1Password's apt repo, so a pinned version stays
+# downloadable after they ship the next one.
+#
+# To bump: set `version`, download the three files, and put `shasum -a 256` of
+# each below. CI's `nix flake check` fetches all three and fails on any hash that
+# does not match. Then check the files are 1Password's before trusting the hashes —
+# the builds only prove a download matches its hash, not who made it:
+#   - each zip holds op.sig; `gpg --verify op.sig op` must report a good signature
+#     from 3FEF9748469ADBE15DA7CA80AC2D62742012EA22, the key published at
+#     https://downloads.1password.com/linux/keys/1password.asc
+#   - `pkgutil --check-signature` must report the .pkg as signed by
+#     "Developer ID Installer: AgileBits Inc. (2BUA8C4S2C)"
+
+version = "2.40.0"
+
+[sha256]
+linux_amd64 = "74277219e8da60958c00f9aee9d2023225e98fdda8bfd2156a5d9e85e0edaab3"
+linux_arm64 = "0e8ac99ee93d661aa725dc24a5ef8bf344741d224064a5dfb469dc689faec86a"
+apple_universal = "f1ef6c9560c332db03fde32c833758caa2f123c4335e676b79ebd8359e34db9b"

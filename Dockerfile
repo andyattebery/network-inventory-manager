@@ -1,22 +1,23 @@
 FROM python:3.12-slim
 
-# Pinned so an `op` change lands on a deliberate bump rather than silently on the
-# next image build — resolving secrets is the one thing this image cannot do
-# wrong. Note 1Password's apt repo keeps only the current release, so when they
-# ship a new one this build fails with "Version '...' not found". That failure is
-# the point: bump this, don't unpin it.
-ARG OP_CLI_VERSION=2.38.1-1
-
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    curl gnupg && \
-    curl -sS https://downloads.1password.com/linux/keys/1password.asc | \
-    gpg --dearmor -o /usr/share/keyrings/1password-archive-keyring.gpg && \
+# The 1Password CLI is pinned in op-cli.toml, which nix/op-cli.nix reads too, so
+# this image and the nix package ship the same `op`. Bump it there, not here —
+# resolving secrets is the one thing this image cannot do wrong, so an `op` change
+# should only ever land on a deliberate bump. The download is checked against the
+# pinned sha256, and running `op --version` fails the build unless the binary
+# executes here and reports the pinned version.
+COPY op-cli.toml /tmp/op-cli.toml
+RUN apt-get update && apt-get install -y --no-install-recommends curl && \
+    apt-get clean && rm -rf /var/lib/apt/lists/* && \
     ARCH="$(dpkg --print-architecture)" && \
-    echo "deb [arch=${ARCH} signed-by=/usr/share/keyrings/1password-archive-keyring.gpg] https://downloads.1password.com/linux/debian/${ARCH} stable main" \
-    > /etc/apt/sources.list.d/1password.list && \
-    apt-get update && \
-    apt-get install -y --no-install-recommends "1password-cli=${OP_CLI_VERSION}" && \
-    apt-get clean && rm -rf /var/lib/apt/lists/*
+    OP_VERSION="$(python -c 'import tomllib; print(tomllib.load(open("/tmp/op-cli.toml", "rb"))["version"])')" && \
+    OP_SHA256="$(python -c 'import sys, tomllib; print(tomllib.load(open("/tmp/op-cli.toml", "rb"))["sha256"]["linux_" + sys.argv[1]])' "$ARCH")" && \
+    curl -fsSL -o /tmp/op.zip "https://cache.agilebits.com/dist/1P/op2/pkg/v${OP_VERSION}/op_linux_${ARCH}_v${OP_VERSION}.zip" && \
+    echo "${OP_SHA256}  /tmp/op.zip" | sha256sum -c - && \
+    python -m zipfile -e /tmp/op.zip /tmp/op && \
+    install -m 0755 /tmp/op/op /usr/local/bin/op && \
+    rm -rf /tmp/op /tmp/op.zip /tmp/op-cli.toml && \
+    test "$(op --version)" = "$OP_VERSION"
 COPY . /src
 RUN pip install --no-cache-dir /src && rm -rf /src
 EXPOSE 8080

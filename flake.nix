@@ -87,6 +87,16 @@
           in
           (pkgsFor system).writeText "nim-imports-twice-ok"
             sys.config.services.network-inventory-manager.package.pname;
+
+        # Fetches every file op-cli.toml pins, for all platforms, so a bump with one wrong
+        # hash fails here. Package builds fetch only their own platform's file: CI builds
+        # x86_64-linux, so without this a bad arm64 hash would surface at the next tag's
+        # arm64 image build, and a bad darwin one on whoever next builds for a Mac.
+        op-cli-pin =
+          let
+            pkgs = pkgsFor system;
+          in
+          pkgs.linkFarm "op-cli-pin" (pkgs.callPackage ./nix/op-cli.nix { }).sources;
       });
 
       devShells = forAllSystems (system: let
@@ -101,7 +111,7 @@
               ps.responses
               ps.setuptools
             ]))
-            pkgs._1password-cli
+            (pkgs.callPackage ./nix/op-cli.nix { })
           ];
         };
       });
