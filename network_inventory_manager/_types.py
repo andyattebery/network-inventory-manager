@@ -258,6 +258,13 @@ def is_valid_dns_name(value: object) -> bool:
     return isinstance(value, str) and bool(_DNS_NAME_RE.match(value))
 
 
+def is_valid_service_name(value: object) -> bool:
+    """A services: key may start with one wildcard label, `*.`, for a wildcard rewrite."""
+    if isinstance(value, str) and value.startswith("*."):
+        value = value[2:]
+    return is_valid_dns_name(value)
+
+
 def is_valid_ip(value: object) -> bool:
     if not isinstance(value, str):
         # A YAML scalar like `ip: 10.0` parses as a float, not a string.

@@ -62,6 +62,8 @@ The section is optional and may be absent.
 
 Services that should have DNS rewrites but aren't discovered by DSM. Each entry creates a rewrite `{service_name}.{homelab_domain}` pointing to the IP of the referenced `hostname`.
 
+A key may start with one wildcard label, `*.`: `"*.apps"` creates the rewrite `*.apps.{homelab_domain}`, which AdGuardHome answers for every name under it that has no rewrite of its own (an exact match wins over a wildcard). Quote such a key; a bare `*` starts a YAML alias.
+
 Inventory services take priority over DSM services on conflict.
 
 ## Settings
@@ -120,7 +122,7 @@ Every resolved value is checked before it can reach an output. Failures are coll
 | `homelab_hosts[].ip` | valid IPv4/IPv6 | **fatal** |
 | `homelab_hosts[].mac` | 12 hex digits, optional `:` `-` `.` | warning; MAC dropped, host keeps DNS |
 | `other_hosts[].hostname` / `.ip` | valid DNS name / IP | **fatal** |
-| `services` keys and `.hostname` | valid DNS name | **fatal** |
+| `services` keys and `.hostname` | valid DNS name; a key may start with `*.` | **fatal** |
 
 A bad IP is fatal because AdGuardHome diffs rewrites on the `(domain, answer)` pair — a wrong answer invalidates the entire current set exactly as a wrong domain does. A bad MAC is not, because the UniFi output only creates and updates reservations and never deletes: the cost is one missing reservation.
 

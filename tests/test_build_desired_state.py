@@ -48,6 +48,15 @@ class TestRewrites:
         rewrites = {r.domain: r.answer for r in state.rewrites}
         assert rewrites["grafana.example.com"] == "10.0.0.10"
 
+    def test_wildcard_service_creates_wildcard_rewrite(self):
+        inv = _inventory(
+            homelab_hosts={"server-01": HostEntry(ip="10.0.0.1")},
+            services={"*.apps": ServiceEntry(hostname="server-01")},
+        )
+        state = build_desired_state(inv, [], [])
+        rewrites = {r.domain: r.answer for r in state.rewrites}
+        assert rewrites["*.apps.example.com"] == "10.0.0.1"
+
     def test_dsm_services_create_rewrites(self):
         inv = _inventory(homelab_hosts={"docker-01": HostEntry(ip="10.0.0.10")})
         dsm = [DsmService(name="Sonarr", url="https://sonarr.example.com", hostname="docker-01")]

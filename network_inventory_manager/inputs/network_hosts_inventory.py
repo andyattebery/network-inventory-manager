@@ -19,6 +19,7 @@ from network_inventory_manager._types import (
     is_valid_dns_name,
     is_valid_ip,
     is_valid_mac,
+    is_valid_service_name,
 )
 
 logger = logging.getLogger(__name__)
@@ -122,7 +123,7 @@ def load(
     services: dict[str, ServiceEntry] = {}
     for name, entry in (raw.get("services") or {}).items():
         hostname = (entry or {}).get("hostname")
-        if not is_valid_dns_name(name):
+        if not is_valid_service_name(name):
             errors.append(f"services key is not a valid DNS name: {name!r}")
             continue
         if not is_valid_dns_name(hostname):

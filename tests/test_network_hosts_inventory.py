@@ -211,6 +211,24 @@ class TestValidation:
         with pytest.raises(InventoryError, match="services key"):
             _load(tmp_path)
 
+    def test_wildcard_service_key_loads(self, tmp_path, monkeypatch):
+        _fake_op(monkeypatch, stdout=(
+            "homelab_domain: example.com\n"
+            "homelab_hosts:\n  server-01:\n    ip: 10.0.0.1\n"
+            'services:\n  "*.apps":\n    hostname: server-01\n'
+        ))
+        inv = _load(tmp_path)
+        assert inv.services["*.apps"].hostname == "server-01"
+
+    def test_wildcard_host_key_rejected(self, tmp_path, monkeypatch):
+        # Only a services: key may be a wildcard; a host key names one machine.
+        _fake_op(monkeypatch, stdout=(
+            "homelab_domain: example.com\n"
+            'homelab_hosts:\n  "*.apps":\n    ip: 10.0.0.1\n'
+        ))
+        with pytest.raises(InventoryError, match="homelab_hosts key"):
+            _load(tmp_path)
+
     def test_all_errors_reported_together(self, tmp_path, monkeypatch):
         _fake_op(monkeypatch, stdout=(
             "homelab_domain: not a domain!\n"

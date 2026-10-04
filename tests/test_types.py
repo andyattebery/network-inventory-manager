@@ -9,6 +9,7 @@ from network_inventory_manager._types import (
     is_valid_dns_name,
     is_valid_ip,
     is_valid_mac,
+    is_valid_service_name,
     normalize_mac,
 )
 
@@ -111,6 +112,38 @@ class TestIsValidDnsName:
 
     def test_non_string(self):
         assert is_valid_dns_name(None) is False
+
+
+class TestIsValidServiceName:
+    def test_wildcard(self):
+        assert is_valid_service_name("*.apps") is True
+
+    def test_bare_label(self):
+        assert is_valid_service_name("apps") is True
+
+    def test_dotted_key(self):
+        assert is_valid_service_name("grafana.server-01") is True
+
+    def test_wildcard_with_nothing_under_it(self):
+        assert is_valid_service_name("*.") is False
+
+    def test_bare_wildcard(self):
+        assert is_valid_service_name("*") is False
+
+    def test_two_wildcards(self):
+        assert is_valid_service_name("*.*.x") is False
+
+    def test_wildcard_not_leftmost(self):
+        assert is_valid_service_name("a.*.b") is False
+
+    def test_wildcard_inside_a_label(self):
+        assert is_valid_service_name("*apps") is False
+
+    def test_double_star(self):
+        assert is_valid_service_name("**.x") is False
+
+    def test_non_string(self):
+        assert is_valid_service_name(None) is False
 
 
 class TestIsValidIp:
