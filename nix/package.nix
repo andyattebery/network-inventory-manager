@@ -10,7 +10,7 @@ let
 in
 python312Packages.buildPythonApplication {
   pname = "network-inventory-manager";
-  version = "0.2.1";
+  version = "0.2.2";
   pyproject = true;
 
   src = lib.cleanSourceWith {
