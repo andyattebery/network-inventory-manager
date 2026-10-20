@@ -27,21 +27,32 @@ Key design:
 ## Setup
 
 ```bash
-pip install -e ".[test]"
+uv sync
 ```
+
+This creates `.venv` on the Python pinned in `.python-version`, with the `dev` dependency group (pytest, responses).
+
+## Dependencies
+
+Change them with uv, which edits `pyproject.toml` and re-locks:
+
+```bash
+uv add 'somepackage>=1.0'        # runtime
+uv add --dev 'somepackage>=1.0'  # tests and tooling
+```
+
+Commit `uv.lock` with `pyproject.toml`. Every build installs from the lockfile — CI's test job, the Docker image and the nix package (through uv2nix) — and CI's `uv sync --locked` fails when the two disagree.
+
+Dependabot (`.github/dependabot.yml`) opens one grouped pull request a month each for `uv.lock`, the `flake.lock` inputs and the workflow actions.
 
 ## Running tests
 
 ```bash
-docker build -t nim-test -f - . <<'DOCKERFILE'
-FROM python:3.12-slim
-COPY . /src
-WORKDIR /src
-RUN pip install --no-cache-dir -e ".[test]"
-CMD ["pytest", "tests/", "-v"]
-DOCKERFILE
-docker run --rm nim-test
+docker run --rm --volume .:/app --volume /app/.venv -w /app \
+  ghcr.io/astral-sh/uv:0.13.4-python3.12-trixie-slim uv run --locked pytest tests -v
 ```
+
+The anonymous `/app/.venv` volume keeps the container's environment out of the checkout ([uv's Docker guide](https://docs.astral.sh/uv/guides/integration/docker/#mounting-the-project-with-docker-run)). A `docker build`-based test image would not work: `.dockerignore` keeps `tests/` out of the build context. With Nix, `nix flake check` runs the suite as `checks.<system>.pytest`.
 
 Tests use `unittest.mock` for the UniFi client and `responses` for AdGuardHome HTTP mocking. No external services needed.
 
@@ -55,12 +66,29 @@ The Dockerfile supports both `linux/amd64` and `linux/arm64`.
 
 ## CI
 
-The GitHub Actions workflow (`.github/workflows/ci.yaml`) runs on push to `main` and pull requests:
+The GitHub Actions workflow (`.github/workflows/ci.yaml`) runs on push to `main`, on pull requests, on tags, and on `workflow_dispatch` with an existing tag (every job then checks out that tag, so a re-release is tested as it ships):
 
-1. **test** — install deps, run pytest
-2. **docker** (on tags only) — build multi-arch image, push to `ghcr.io/andyattebery/network-inventory-manager`
+1. **test** — `uv sync --locked`, run pytest
+2. **nix** (x86_64 and arm64 runners) — `nix flake check` (module import test, op-cli pin, the test suite against the installed package), then build the package
+3. **docker** (on tags only) — check the tag matches `pyproject.toml` as a PEP 440 version, build the multi-arch image, push to `ghcr.io/andyattebery/network-inventory-manager`, promote `:latest` unless it is a pre-release
+4. **github-release** (on tags only) — create the GitHub release
+5. **release-branch** (on release tags only) — fast-forward the `release` branch to the tag, once test, nix and docker have passed
 
-Tag format: `v1.0.0` for releases, `v1.0.0-rc1` for pre-releases. Pre-release tags push a versioned image but don't promote `:latest`.
+## Releasing
+
+The version lives only in `pyproject.toml` (the nix package reads it through `uv.lock`), so it is bumped before tagging:
+
+```bash
+uv version --bump patch --no-sync    # or minor / major; rewrites pyproject.toml and uv.lock
+git add pyproject.toml uv.lock
+git commit -m "release $(uv version --short)"
+git tag "$(uv version --short)"
+git push origin main "$(uv version --short)"
+```
+
+The docker job fails a tag that names a different version. Consumers' flakes follow the `release` branch (`github:andyattebery/network-inventory-manager/release`), which only moves to a release tag whose own test, nix and docker jobs passed, so `nix flake update` picks up releases and nothing else.
+
+A pre-release is whatever PEP 440 calls one: `uv version --bump minor --bump rc --no-sync` gives `0.3.0rc1`, tagged `0.3.0rc1` (another spelling of the same version, such as `v0.3.0-rc.1`, also matches). It gets a versioned image and a GitHub pre-release, but does not promote `:latest` or move `release`.
 
 ## Adding a new output
 

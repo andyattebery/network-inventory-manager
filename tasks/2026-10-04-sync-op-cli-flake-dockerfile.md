@@ -1,10 +1,9 @@
 # Keep the 1Password CLI version in sync between the flake and the Dockerfile
 
 ## Status: Done
-Started: 2026-10-04 12:36 CDT · Updated: 2026-10-04 13:03 CDT
-Pin committed by the user as `bf7ac65` (12:57, local, ahead of origin by 1). Follow-up
-`op-cli-pin` check done and verified; the user staged it, not committed. No git writes by the
-agent at any point.
+Started: 2026-10-04 12:36 CDT · Updated: 2026-10-04 13:08 CDT
+Shipped in 0.2.2 (`68cde25`, user's commit and tag); release CI green on all jobs, image pushed
+for amd64 and arm64. No git writes by the agent at any point.
 
 ## Goal
 User (2026-10-04): "the flake and dockerfile need to keep the 1password dependency in sync".
@@ -92,11 +91,19 @@ User (2026-10-04): "the flake and dockerfile need to keep the 1password dependen
   passes, 180 tests, wrapper op still `g1v1lwxh…-1password-cli-2.40.0`.
 - 2026-10-04 13:03 CDT — Removed this round's nix-store volumes and `nixos/nix:latest`. Found
   `bf7ac65` (user's commit of round one, 12:57:10) and round two fully staged by the user.
+- 2026-10-04 13:08 CDT — User amended both rounds into `68cde25`, tagged `0.2.2`, pushed. CI run
+  37222885849 all green: nix job ran `checks.x86_64-linux.op-cli-pin` (all 3 files fetched);
+  docker job printed `/tmp/op.zip: OK` for linux/amd64 and linux/arm64 (arm64 under QEMU),
+  pushed `ghcr.io/andyattebery/network-inventory-manager:0.2.2` and promoted `:latest`;
+  github-release ran; update-flake run 37223058790 pushed `ea985a8 update flake to 0.2.2` to
+  main. homelab-infrastructure's `nix/flake.lock` already locks `nim` at `ea985a8`; whether
+  network-01 has been deployed with it was not checked. Local `git fetch` failed (SSH to
+  github.com:22 timed out), so local main's position vs `ea985a8` is from the run log only.
 
 ## Open / blocked
 - Not verified: an actual darwin build (no darwin builder) — only its hash and evaluation.
 - Not verified: versionCheckHook *failing* on a version mismatch (only the passing case seen);
   that is nixpkgs' hook behaviour, not this change.
 - `tasks/` is still not gitignored in this repo (shows as `??`).
-- Round two is staged, not committed: .github/workflows/ci.yaml, flake.nix, nix/op-cli.nix,
-  op-cli.toml, this file (this last edit is unstaged on top).
+- network-01 deploy with `ea985a8` not verified from here.
+- This file's 13:08 entry is an uncommitted edit on top of `68cde25`.

@@ -26,14 +26,24 @@ instance accumulates duplicates they persist until removed by hand.
 
 ## Deployment repo (`homelab-infrastructure`)
 
-### 1. Pin the `nim` flake input to a release tag
+### 1. Follow the `release` branch
 
-`nix/flake.nix` has no `ref=`, so `flake.lock` follows `main` HEAD — and the
-pinned revision is the `[skip ci]` version-bump commit the release workflow
-pushes, *not* the tagged commit, so the deployed tree is one GitHub CI never ran
-pytest against. Any unreleased push to `main` ships on the next `nix flake
-update`. Enabling `doCheck` in `nix/package.nix` closed the "untested code
-deploys" half; pinning to a tag would close the other.
+`nix/flake.nix` has no `ref=`, so `flake.lock` follows `main` HEAD: any push to
+`main` ships on the next `nix flake update`, whether CI passed or not. Since
+2026-10-20 the package build no longer runs the tests (they are
+`checks.<system>.pytest`), so until this changes nothing gates what network-01
+deploys. CI fast-forwards a `release` branch to each release tag once its test,
+nix and docker jobs pass; point the input at it:
+
+```nix
+nim = {
+  url = "github:andyattebery/network-inventory-manager/release";
+  inputs.nixpkgs.follows = "nixpkgs";
+};
+```
+
+Create the branch at the commit homelab already deploys before switching, so the
+switch itself changes nothing that runs.
 
 ### 2. Keep the Ansible role maintained, but stop it deploying
 

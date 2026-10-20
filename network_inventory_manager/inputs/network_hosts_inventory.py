@@ -209,7 +209,7 @@ def _resolve_template(template_text: str, op_service_account_token: str) -> str:
             raise InventoryError(
                 "1Password CLI ('op') not found on PATH. The inventory contains "
                 "{{ op://... }} references that cannot be resolved without it. "
-                "Under NixOS the wrapProgram step in nix/package.nix supplies it — "
+                "Under NixOS the makeWrapper step in nix/package.nix supplies it — "
                 "check the package was built with that postFixup."
             ) from exc
         except subprocess.TimeoutExpired as exc:

@@ -3,9 +3,27 @@
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+
+    pyproject-nix = {
+      url = "github:pyproject-nix/pyproject.nix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
+    uv2nix = {
+      url = "github:pyproject-nix/uv2nix";
+      inputs.pyproject-nix.follows = "pyproject-nix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
+    pyproject-build-systems = {
+      url = "github:pyproject-nix/build-system-pkgs";
+      inputs.pyproject-nix.follows = "pyproject-nix";
+      inputs.uv2nix.follows = "uv2nix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
-  outputs = { self, nixpkgs }:
+  outputs = { self, nixpkgs, pyproject-nix, uv2nix, pyproject-build-systems }:
     let
       supportedSystems = [ "x86_64-linux" "aarch64-linux" "x86_64-darwin" "aarch64-darwin" ];
       forAllSystems = nixpkgs.lib.genAttrs supportedSystems;
@@ -20,17 +38,24 @@
         config.allowUnfreePredicate = pkg:
           builtins.elem (nixpkgs.lib.getName pkg) [ "1password-cli" ];
       };
+
+      # pyproject.toml and uv.lock, read once; nothing in it depends on the system.
+      workspace = uv2nix.lib.workspace.loadWorkspace { workspaceRoot = ./.; };
+
+      # What nix/package.nix needs beyond nixpkgs. The overlay passes the same set, so a consumer
+      # builds against its own nixpkgs but with this repo's uv.lock.
+      packageArgs = { inherit workspace pyproject-nix pyproject-build-systems; };
     in
     {
       packages = forAllSystems (system: let
         pkgs = pkgsFor system;
       in {
-        default = pkgs.callPackage ./nix/package.nix { };
-        network-inventory-manager = pkgs.callPackage ./nix/package.nix { };
+        default = pkgs.callPackage ./nix/package.nix packageArgs;
+        network-inventory-manager = pkgs.callPackage ./nix/package.nix packageArgs;
       });
 
       overlays.default = final: _prev: {
-        network-inventory-manager = final.callPackage ./nix/package.nix { };
+        network-inventory-manager = final.callPackage ./nix/package.nix packageArgs;
       };
 
       # `key` is what makes this module safe to import from more than one place. NixOS dedups
@@ -97,22 +122,34 @@
             pkgs = pkgsFor system;
           in
           pkgs.linkFarm "op-cli-pin" (pkgs.callPackage ./nix/op-cli.nix { }).sources;
+
+        # The test suite. The package build does not run it; CI builds this check, and the
+        # `release` branch only moves when CI passes. See the tests comment in nix/package.nix.
+        pytest = self.packages.${system}.default.tests.pytest;
       });
 
       devShells = forAllSystems (system: let
         pkgs = pkgsFor system;
+        # The package's own Python set, with this project installed editable from $REPO_ROOT so
+        # source edits take effect without re-entering the shell.
+        pythonSet = (pkgs.callPackage ./nix/package.nix packageArgs).pythonSet.overrideScope
+          (workspace.mkEditablePyprojectOverlay { root = "$REPO_ROOT"; });
       in {
         default = pkgs.mkShell {
           packages = [
-            (pkgs.python312.withPackages (ps: [
-              ps.requests
-              ps.pyyaml
-              ps.pytest
-              ps.responses
-              ps.setuptools
-            ]))
+            (pythonSet.mkVirtualEnv "network-inventory-manager-dev-env" workspace.deps.all)
+            pkgs.uv
             (pkgs.callPackage ./nix/op-cli.nix { })
           ];
+          env = {
+            UV_NO_SYNC = "1";
+            UV_PYTHON = pythonSet.python.interpreter;
+            UV_PYTHON_DOWNLOADS = "never";
+          };
+          shellHook = ''
+            unset PYTHONPATH
+            export REPO_ROOT=$(git rev-parse --show-toplevel)
+          '';
         };
       });
     };

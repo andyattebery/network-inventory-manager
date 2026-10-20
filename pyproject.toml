@@ -1,6 +1,6 @@
 [build-system]
-requires = ["setuptools>=68.0"]
-build-backend = "setuptools.build_meta"
+requires = ["uv_build>=0.13.4,<0.14"]
+build-backend = "uv_build"
 
 [project]
 name = "network-inventory-manager"
@@ -11,14 +11,14 @@ dependencies = [
     "pyyaml>=6.0",
 ]
 
-[tool.setuptools.packages.find]
-include = ["network_inventory_manager*"]
-
 [project.scripts]
 network-inventory-manager = "network_inventory_manager.__main__:main"
 
-[project.optional-dependencies]
-test = [
+[dependency-groups]
+dev = [
     "pytest>=8.0",
     "responses>=0.25",
 ]
+
+[tool.uv.build-backend]
+module-root = ""

@@ -1,0 +1,30 @@
+---
+# uv.lock pins the Python dependencies of the nix package, the image and CI, and flake.lock pins
+# nixpkgs and uv2nix; nothing else moves them. One grouped pull request per ecosystem a month, and
+# each runs CI like any other.
+version: 2
+updates:
+  - package-ecosystem: "uv"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    groups:
+      python:
+        patterns: ["*"]
+
+  # Updates the inputs locked in flake.lock, not refs written in flake.nix.
+  - package-ecosystem: "nix"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    groups:
+      flake-inputs:
+        patterns: ["*"]
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    groups:
+      actions:
+        patterns: ["*"]
