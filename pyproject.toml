@@ -4,7 +4,7 @@ build-backend = "uv_build"
 
 [project]
 name = "network-inventory-manager"
-version = "0.2.2"
+version = "0.2.3"
 requires-python = ">=3.12"
 dependencies = [
     "requests>=2.31",
