@@ -2,7 +2,7 @@
 #
 # The version has to come from the pin, not from nixpkgs: the overlay builds this against
 # the consumer's nixpkgs, so taking `_1password-cli` as-is ships whatever `op` that nixpkgs
-# happens to carry -- network-01 ran 2.34.0 while the Dockerfile pinned 2.40.0. Overriding
+# happens to carry -- a consumer on nixos-26.05 got 2.34.0 while the Dockerfile pinned 2.40.0. Overriding
 # nixpkgs' package keeps its install steps and its versionCheckHook, which fails the build
 # unless the binary reports the pinned version.
 {

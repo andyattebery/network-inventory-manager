@@ -8,9 +8,9 @@ an entry here.
 
 ## 2026-10-20 — Python dependencies from one uv.lock
 
-The same two dependencies came from three resolvers. network-01 builds this
-package through the overlay against homelab's nixos-26.05, so it ran whatever
-`python312Packages` that branch carried (requests 2.33.1, urllib3 2.6.3). The
+The same two dependencies came from three resolvers. A consumer of the overlay
+builds this package against its own nixpkgs, so a host on nixos-26.05 ran whatever
+`python312Packages` that branch carried (requests 2.33.1, urllib3 2.7.0). The
 image and CI took whatever pip resolved on the day (2.34.2, 2.8.0), and the
 flake's own packages took this repo's nixpkgs lock (2.34.2, 2.7.0). The list of
 dependencies was written out three times as well.
@@ -18,26 +18,28 @@ dependencies was written out three times as well.
 `uv.lock` is now the pin. uv2nix builds the nix package from it, and the
 Dockerfile and CI install from it with `uv sync --locked`. The overlay still
 takes the interpreter and `op` from the consumer's nixpkgs, but no longer its
-Python packages. On network-01 that also means `requests` verifies TLS against
-the locked `certifi` instead of nixpkgs' CA bundle, as the image already did;
-its only verified-TLS peer is GitHub.
+Python packages. That also moves the CA bundle: `requests` verifies TLS against
+the locked `certifi` instead of nixpkgs' bundle, as the image already did. It
+applies to every endpoint NIM verifies — GitHub for a repo-hosted inventory, and
+DSM or AdGuardHome when configured with https; UniFi is never verified.
 
 The tests left the package build. uv2nix builds packages without their test
 dependencies, so the suite is its own derivation, `checks.<system>.pytest`. Its
 source leaves out `network_inventory_manager/`, so the tests import the installed
 wheel rather than the source tree, and a file the wheel misses fails them. The
-guarantee the in-build tests gave — network-01 cannot deploy a tree whose tests
+guarantee the in-build tests gave — a host cannot deploy a tree whose tests
 fail — moved to a `release` branch, on the model of a nixpkgs channel branch:
 CI fast-forwards it to a release tag only after that tag's test, nix and docker
-jobs pass, and homelab's flake follows it instead of `main`. Until homelab does,
-nothing gates what it deploys.
+jobs pass. A consumer whose flake follows `release` deploys only those; one that
+follows `main` deploys every push, and nothing gates it.
 
 Releases now bump the version before tagging (`uv version --bump`) instead of a
-bot writing it back to `main` afterwards. The bot's `[skip ci]` commit was the
-one homelab deployed, it was never tested, and five of the seven tags pointed at
-a tree that still carried an earlier version — the 0.2.2 image reports 0.2.1.
-The build backend moved from setuptools to `uv_build`, which rejects dynamic
-metadata, so deriving the version from the git tag is not an option.
+bot writing it back to `main` afterwards. A consumer following `main` deployed
+the bot's `[skip ci]` commit, which CI never ran on, and five of the seven tags
+pointed at a tree that still carried an earlier version — the 0.2.2 image
+reports 0.2.1. The build backend moved from setuptools to `uv_build`, which
+rejects dynamic metadata, so deriving the version from the git tag is not an
+option.
 
 ---
 
@@ -45,10 +47,10 @@ metadata, so deriving the version from the git tag is not an option.
 
 The image and the nix package had drifted onto three different `op` releases:
 2.40.0 pinned in the Dockerfile, 2.34.1 in the flake's own packages (from its
-locked nixpkgs), and 2.34.0 on network-01. The last is why the pin cannot come from
-nixpkgs. The overlay calls `final.callPackage`, so a consumer builds this package
-against *its own* nixpkgs — homelab-infrastructure follows nixos-26.05 — and
-bumping this flake's lock changes nothing there.
+locked nixpkgs), and 2.34.0 in a consumer's build on nixos-26.05. The last is why
+the pin cannot come from nixpkgs. The overlay calls `final.callPackage`, so a
+consumer builds this package against *its own* nixpkgs, and bumping this flake's
+lock changes nothing there.
 
 `op-cli.toml` now holds the version and the sha256 of each release download, and
 both builds read it. `nix/op-cli.nix` overrides nixpkgs' `_1password-cli` with
@@ -85,9 +87,9 @@ failed. NIM did not.
 built from it became `<host>.{{ op://... }}`. The desired state was still 64
 well-formed entries — they just described a domain that does not exist. The
 reconciler compared them against the 117 real rewrites in AdGuardHome, found no
-overlap, and did what it was told: `added 64, removed 117`. Every DNS rewrite in
-the homelab was deleted, and `adguardhome-sync` replicated the deletion to the
-two secondaries.
+overlap, and did what it was told: `added 64, removed 117`. Every DNS rewrite was
+deleted, and `adguardhome-sync` replicated the deletion to the secondary
+AdGuardHome instances.
 
 It recovered on its own at 10:42 when the reference was fixed. It then happened
 a second time at 16:13, when the service-account token was revoked during

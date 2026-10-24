@@ -5,3 +5,5 @@ __pycache__/
 dist/
 build/
 network_hosts_inventory.yaml.tpl
+plans/
+tasks/

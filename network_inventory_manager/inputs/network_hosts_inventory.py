@@ -24,7 +24,7 @@ from network_inventory_manager._types import (
 
 logger = logging.getLogger(__name__)
 
-# `op inject` on the homelab inventory resolves ~25 references across ~16 distinct
+# `op inject` on a real inventory resolves ~25 references across ~16 distinct
 # 1Password items. At a pessimistic 1s per item that is ~16s, so 60s leaves ~4x
 # headroom for a slow API or a cold service-account handshake. It is also 3.3% of
 # the 1800s production sync interval, so a wedged `op` can never stall more than
