@@ -1,5 +1,5 @@
 [build-system]
-requires = ["uv_build>=0.13.4,<0.14"]
+requires = ["uv_build>=0.13.6,<0.14"]
 build-backend = "uv_build"
 
 [project]
@@ -16,7 +16,7 @@ network-inventory-manager = "network_inventory_manager.__main__:main"
 
 [dependency-groups]
 dev = [
-    "pytest>=8.0",
+    "pytest>=9.2.0",
     "responses>=0.25",
 ]
 
